@@ -1,0 +1,146 @@
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT Test Challenge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,Arial}
+body{min-height:100vh;background:linear-gradient(135deg,#000,#0a0f2c,#000);color:#fff;display:flex;justify-content:center;align-items:center;overflow:hidden}
+.btn{padding:15px 34px;border:none;border-radius:14px;background:linear-gradient(90deg,#00f0ff,#7f00ff);font-weight:700;cursor:pointer;margin-top:15px;transition:.3s}
+.btn:hover{transform:scale(1.05)}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;transform:translateY(100%);transition:.6s;padding:20px}
+.screen.active{transform:translateY(0)}
+.box{background:rgba(255,255,255,.08);padding:30px;border-radius:24px;width:100%;max-width:450px;text-align:center;box-shadow:0 0 20px rgba(0,0,0,.5)}
+input{width:100%;padding:14px;margin-bottom:15px;border-radius:12px;border:none;font-size:16px}
+.option{background:rgba(255,255,255,.1);padding:14px;border-radius:12px;margin-bottom:10px;cursor:pointer;transition:.3s}
+.option:hover{background:rgba(127,0,255,.4);transform:scale(1.02)}
+.timer{position:absolute;top:20px;right:20px;font-size:20px;font-weight:700}
+.sticker{font-size:50px;margin-bottom:15px;animation:bounce 1s infinite alternate}
+@keyframes bounce{0%{transform:translateY(0)}100%{transform:translateY(-15px)}}
+@media(max-width:480px){.box{padding:20px}}
+</style>
+</head>
+<body>
+
+<section class="screen active" id="register">
+  <div class="box">
+    <h2>👤 Ishtirokchi ma’lumotlari</h2>
+    <input id="name" placeholder="Ism">
+    <input id="surname" placeholder="Familiya">
+    <button class="btn" onclick="start()">Testni boshlash</button>
+  </div>
+</section>
+
+<section class="screen" id="test">
+  <div class="timer" id="timer">20:00</div>
+  <div class="box">
+    <h3 id="q"></h3>
+    <div id="opts"></div>
+  </div>
+</section>
+
+<section class="screen" id="result">
+  <div class="box">
+    <div class="sticker" id="sticker">🎉</div>
+    <h2 id="res"></h2>
+    <canvas id="cert" width="400" height="300" style="margin-top:15px;border-radius:15px;box-shadow:0 0 15px rgba(255,255,255,.3)"></canvas>
+    <button class="btn" onclick="location.reload()">Yana urinib ko‘rish</button>
+  </div>
+</section>
+
+<script>
+let user={},i=0,score=0,time=1200,timerInterval,selected=null;
+const questions=[
+ {q:"Binary searchning murakkabligi nechchilik?",o:["O(n)","O(log n)","O(n²)","O(1)"],a:1},
+ {q:"FIFO qaysi ma’lumotlar tuzilmasiga tegishli?",o:["Stack","Queue","Tree","Graph"],a:1},
+ {q:"Quicksortning eng yomon holati murakkabligi?",o:["O(n)","O(log n)","O(n log n)","O(n²)"],a:3},
+ {q:"Qaysi paradigmani kiritmaymiz?",o:["OOP","Funksional","Procedural","Recursive"],a:3},
+ {q:"Hash jadvalida o‘rtacha qidirish murakkabligi?",o:["O(n)","O(log n)","O(1)","O(n²)"],a:2},
+ {q:"HTML nima uchun ishlatiladi?",o:["Dastur yozish","Veb sahifa tuzish","Ma’lumotlarni saqlash","Hisoblash"],a:1},
+ {q:"CSS vazifasi?",o:["Ma’lumot saqlash","Sahifa dizayni","JavaScript bajarish","Server ishlash"],a:1},
+ {q:"JavaScript nima uchun kerak?",o:["Statik sahifa","Interaktivlik qo‘shish","Ma’lumot bazasi","Server ishlash"],a:1},
+ {q:"Rasm ko‘rsatish uchun teg?",o:["<div>","<img>","<span>","<a>"],a:1},
+ {q:"Loop nima?",o:["Shart operatori","Takrorlash operatori","Funksiya","O‘zgaruvchi"],a:1},
+ {q:"Array nima?",o:["Bitta qiymat","Ko‘p qiymat to‘plami","Funksiya","Shart"],a:1},
+ {q:"Object nima?",o:["Qiymat","Kalit-qiymat to‘plami","Funksiya","Loop"],a:1},
+ {q:"Boolean qiymat nima?",o:["Ha/Yo‘q","Matn","Raqam","Funksiya"],a:0},
+ {q:"DOM nima?",o:["Sahifa strukturasini boshqarish","Server tilini","Ma’lumot bazasi","Script"],a:0},
+ {q:"EventListener nima?",o:["Hodisani tinglash","Array yaratish","Loop ishlatish","CSS o‘zgartirish"],a:0},
+ {q:"Git nima?",o:["Versiya nazorati","Dastur","Server","Ma’lumot"],a:0},
+ {q:"HTML elementlarini tanlash usuli?",o:["getElementById","querySelector","Ikki javob to‘g‘ri","Hech biri"],a:2},
+ {q:"O‘zgaruvchi qiymatini oshirish operatori?",o:["++","--","**","%"],a:0},
+ {q:"JavaScriptda funksiya chaqirish operatori?",o:["()","{}","[]","||"],a:0},
+ {q:"Async funksiyani ishlatish nima uchun?",o:["Sinxron bajarish","Asinxron bajarish","CSS o‘zgartirish","HTML bog‘lash"],a:1},
+];
+
+function start(){
+  const nameInput = document.getElementById("name").value.trim();
+  const surnameInput = document.getElementById("surname").value.trim();
+  if(!nameInput || !surnameInput){alert("Hammasini to‘ldiring"); return;}
+  user={name:nameInput,surname:surnameInput};
+  i=0; score=0; time=1200;
+  document.getElementById("register").classList.remove("active");
+  document.getElementById("test").classList.add("active");
+  loadQuestion();
+  timerInterval=setInterval(updateTimer,1000);
+}
+
+function updateTimer(){
+  time--;
+  document.getElementById("timer").innerText=`${Math.floor(time/60)}:${String(time%60).padStart(2,"0")}`;
+  if(time<=0) finishTest();
+}
+
+function loadQuestion(){
+  selected=null;
+  const q=questions[i];
+  document.getElementById("q").innerText=`${i+1}. ${q.q}`;
+  const optsDiv=document.getElementById("opts");
+  optsDiv.innerHTML="";
+  q.o.forEach((t,idx)=>{
+    const div=document.createElement("div");
+    div.className="option";
+    div.innerText=t;
+    div.onclick=()=>{selected=idx;nextQuestion()};
+    optsDiv.appendChild(div);
+  });
+}
+
+function nextQuestion(){
+  if(selected===questions[i].a) score++;
+  i++;
+  if(i>=20) finishTest();
+  else loadQuestion();
+}
+
+function finishTest(){
+  clearInterval(timerInterval);
+  document.getElementById("test").classList.remove("active");
+  document.getElementById("result").classList.add("active");
+  const percent=Math.round((score/20)*100);
+  const resDiv=document.getElementById("res");
+  const canvas=document.getElementById("cert");
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#1a1a2e";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#fff";
+  ctx.font="22px Arial";
+  ctx.textAlign="center";
+  ctx.fillText("IT Challenge Sertifikati",canvas.width/2,50);
+  ctx.font="18px Arial";
+  ctx.fillText(`Ishtirokchi: ${user.name} ${user.surname}`,canvas.width/2,120);
+  ctx.fillText(`Natija: ${percent}%`,canvas.width/2,160);
+  if(percent>=50){
+    ctx.fillText("Testni muvaffaqiyatli yakunladi!",canvas.width/2,200);
+    resDiv.innerHTML=`🎉 Tabriklaymiz ${user.name}!<br>Natija: ${percent}%<br>Sertifikatingiz tayyor!`;
+  } else {
+    document.getElementById("sticker").style.display="none";
+    resDiv.innerHTML=`❌ ${user.name}, natija: ${percent}%<br>Qayta urinib ko‘ring.`;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+}
+</script>
+</body>
+</html>
